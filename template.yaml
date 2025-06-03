@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+    url-shortner-uday
+
+    Sample SAM Template for url-shortner-uday
+
+Globals:
+    Function:
+        Timeout: 3
+        LoggingConfig:
+            LogFormat: JSON
+
+Resources:
+    UrlShortenerFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: ./
+            Handler: url-shortner/app.lambdaHandler
+            Runtime: nodejs22.x
+            Architectures:
+                - x86_64
+            Policies:
+                - DynamoDBCrudPolicy:
+                      TableName: !Ref UrlTable
+            Events:
+                ShortenUrl:
+                    Type: Api
+                    Properties:
+                        Path: /get-url-shortner
+                        Method: post
+                RedirectUrl:
+                    Type: Api
+                    Properties:
+                        Path: /short/{id}
+                        Method: get
+        Metadata:
+            BuildMethod: esbuild
+            BuildProperties:
+                Minify: true
+                Target: es2020
+                Sourcemap: true
+                EntryPoints:
+                    - url-shortner/app.ts
+
+    UrlTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+            TableName: UrlTable
+            AttributeDefinitions:
+                - AttributeName: id
+                  AttributeType: S
+            KeySchema:
+                - AttributeName: id
+                  KeyType: HASH
+            BillingMode: PAY_PER_REQUEST
+
+Outputs:
+    ApiUrl:
+        Description: 'Base URL for the API Gateway'
+        Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
