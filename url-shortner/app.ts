@@ -18,6 +18,11 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGat
         const method = event.httpMethod;
         const path = event.path;
 
+        let user = null;
+        if (event.requestContext.authorizer?.user) {
+            user = JSON.parse(event.requestContext.authorizer.user);
+        }
+
         // Shorten URL
         if (method === 'POST' && path === '/get-url-shortner') {
             const body = JSON.parse(event.body || '{}');
@@ -39,7 +44,7 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGat
 
             const shortUrl = `https://${event.requestContext.domainName}/${event.requestContext.stage}/short/${id}`;
 
-            return createResponse(200, { shortUrl });
+            return createResponse(200, { shortUrl ,user});
         }
 
         // Redirect to original URL
@@ -66,7 +71,7 @@ export const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGat
                 headers: {
                     Location: url,
                 },
-                body: '',
+                body: `Redirecting`,
             };
         }
 

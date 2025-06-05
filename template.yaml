@@ -1,66 +1,108 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-    url-shortner-uday
-
-    Sample SAM Template for url-shortner-uday
+Description: url-shortner-uday
 
 Globals:
-    Function:
-        Timeout: 3
-        LoggingConfig:
-            LogFormat: JSON
+  Function:
+    Timeout: 3
+    LoggingConfig:
+      LogFormat: JSON
 
 Resources:
-    UrlShortenerFunction:
-        Type: AWS::Serverless::Function
-        Properties:
-            CodeUri: ./
-            Handler: url-shortner/app.lambdaHandler
-            Runtime: nodejs22.x
-            Architectures:
-                - x86_64
-            Policies:
-                - DynamoDBCrudPolicy:
-                      TableName: !Ref UrlTable
-            Events:
-                ShortenUrl:
-                    Type: Api
-                    Properties:
-                        Path: /get-url-shortner
-                        Method: post
-                RedirectUrl:
-                    Type: Api
-                    Properties:
-                        Path: /short/{id}
-                        Method: get
-            Environment:
-                Variables:
-                    TABLE_NAME: !Ref UrlTable
-        Metadata:
-            BuildMethod: esbuild
-            BuildProperties:
-                Minify: true
-                Target: es2020
-                Sourcemap: true
-                EntryPoints:
-                    - url-shortner/app.ts
-                External:
-                    - '@aws-sdk/client-dynamodb'
 
-    UrlTable:
-        Type: AWS::DynamoDB::Table
-        Properties:
-            TableName: UrlTable
-            AttributeDefinitions:
-                - AttributeName: id
-                  AttributeType: S
-            KeySchema:
-                - AttributeName: id
-                  KeyType: HASH
-            BillingMode: PAY_PER_REQUEST
+  UrlApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: UrlApi
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: LambdaTokenAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false
+        Authorizers:
+          LambdaTokenAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            Identity:
+              Header: Authorization
+      MethodSettings:
+        - LoggingLevel: INFO
+          DataTraceEnabled: true
+          MetricsEnabled: true
+          ResourcePath: "/*"
+          HttpMethod: "*"
+
+  UrlShortenerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: url-shortner/app.lambdaHandler
+      Runtime: nodejs22.x
+      Architectures: [x86_64]
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UrlTableUday
+      Events:
+        ShortenUrl:
+          Type: Api
+          Properties:
+            Path: /get-url-shortner
+            Method: post
+            RestApiId: !Ref UrlApi
+            Auth:
+              Authorizer: LambdaTokenAuthorizer  
+        RedirectUrl:
+          Type: Api
+          Properties:
+            Path: /short/{id}
+            Method: get
+            RestApiId: !Ref UrlApi
+            
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref UrlTableUday
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - url-shortner/app.ts
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        External:
+          - '@aws-sdk/client-dynamodb'
+
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: auth/auth.handler
+      Runtime: nodejs22.x
+      Environment:
+        Variables:
+          JWT_SECRET: "123456"
+      Architectures:
+        - x86_64
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - auth/auth.ts
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+
+  UrlTableUday:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: UrlTable-uday-auth
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
 
 Outputs:
-    ApiUrl:
-        Description: 'Base URL for the API Gateway'
-        Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+  ApiUrl:
+    Description: 'Base URL for the API Gateway'
+    Value: !Sub 'https://${UrlApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
