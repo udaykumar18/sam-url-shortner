@@ -3,7 +3,7 @@ import { DynamoDBClient, PutItemCommand, GetItemCommand } from '@aws-sdk/client-
 import { v4 as uuidv4 } from 'uuid';
 
 const client = new DynamoDBClient({});
-const TABLE_NAME = 'UrlTable';
+const TABLE_NAME = process.env.TABLE_NAME!;
 
 const createResponse = (statusCode: number, body: any): APIGatewayProxyResult => ({
     statusCode,

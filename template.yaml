@@ -34,6 +34,9 @@ Resources:
                     Properties:
                         Path: /short/{id}
                         Method: get
+            Environment:
+                Variables:
+                    TABLE_NAME: !Ref UrlTable
         Metadata:
             BuildMethod: esbuild
             BuildProperties:
@@ -42,6 +45,8 @@ Resources:
                 Sourcemap: true
                 EntryPoints:
                     - url-shortner/app.ts
+                External:
+                    - '@aws-sdk/client-dynamodb'
 
     UrlTable:
         Type: AWS::DynamoDB::Table
